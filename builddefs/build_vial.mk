@@ -11,6 +11,7 @@ COMBO_ENABLE ?= yes
 KEY_OVERRIDE_ENABLE ?= yes
 LAYER_LOCK_ENABLE ?= yes
 REPEAT_KEY_ENABLE ?= yes
+HALL_EFFECT_ENABLE ?= yes
 SRC += $(QUANTUM_DIR)/vial.c
 OPT_DEFS += -DVIAL_ENABLE -DNO_DEBUG -DSERIAL_NUMBER=\"vial:f64c2b3c\" -DCAPS_WORD_INVERT_ON_SHIFT
 
@@ -21,6 +22,10 @@ endif
 ifeq ($(strip $(VIALRGB_ENABLE)), yes)
     SRC += $(QUANTUM_DIR)/vialrgb.c
     OPT_DEFS += -DVIALRGB_ENABLE
+endif
+
+ifeq ($(strip $(HALL_EFFECT_ENABLE)), yes)
+    OPT_DEFS += -DHALL_EFFECT_ENABLE
 endif
 
 ifeq ($(strip $(QMK_SETTINGS)), yes)

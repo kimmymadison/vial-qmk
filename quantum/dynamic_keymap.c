@@ -113,6 +113,28 @@ int dynamic_keymap_set_alt_repeat_key(uint8_t index, const vial_alt_repeat_key_e
 }
 #endif
 
+#ifdef VIAL_HALL_EFFECT_ENABLE
+int dynamic_keymap_get_hall_effect(hall_effect_t *settings) {
+    void *address = (void*)(VIAL_HALL_EFFECT_EEPROM_ADDR);
+    eeprom_read_block(settings, address, sizeof(hall_effect_t));
+
+    return 0;
+}
+int dynamic_keymap_set_hall_effect(const hall_effect_t *settings) {
+    void *address = (void*)(VIAL_HALL_EFFECT_EEPROM_ADDR);
+    eeprom_write_block(settings, address, sizeof(hall_effect_t));
+
+    return 0;
+}
+void dynamic_keymap_reset_hall_effect(void) {
+    key_settings.mode = RAPID_TRIGGER_MODE;
+    key_settings.sensitivity = SENSITIVITY;
+    key_settings.travel_distance = TRAVEL_DISTANCE;
+    key_settings.actuation_point = ACTUATION_POINT;
+    dynamic_keymap_set_hall_effect(&key_settings);
+}
+#endif
+
 void dynamic_keymap_reset(void) {
 #ifdef VIAL_ENABLE
     /* temporarily unlock the keyboard so we can set hardcoded QK_BOOT keycode */
@@ -175,6 +197,10 @@ void dynamic_keymap_reset(void) {
         for (size_t i = 0; i < VIAL_ALT_REPEAT_KEY_ENTRIES; ++i)
             dynamic_keymap_set_alt_repeat_key(i, &arep);
     }
+#endif
+
+#ifdef VIAL_HALL_EFFECT_ENABLE
+    dynamic_keymap_reset_hall_effect();
 #endif
 
 #ifdef VIAL_ENABLE
