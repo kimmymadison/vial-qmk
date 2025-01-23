@@ -59,8 +59,10 @@ int dynamic_keymap_set_alt_repeat_key(uint8_t index, const vial_alt_repeat_key_e
 #endif
 #ifdef VIAL_HALL_EFFECT_ENABLE
 #include "hall_effect.h"
-int dynamic_keymap_get_hall_effect(hall_effect_t *settings);
-int dynamic_keymap_set_hall_effect(const hall_effect_t *settings);
+int dynamic_keymap_get_hall_effect_key_config(uint8_t row, uint8_t col, key_config_t *key);
+int dynamic_keymap_set_hall_effect_key_config(uint8_t row, uint8_t col, key_config_t *key);
+int dynamic_keymap_get_hall_effect_user_config(uint8_t index, uint16_t *config);
+int dynamic_keymap_set_hall_effect_user_config(uint8_t index, uint16_t *config);
 void dynamic_keymap_reset_hall_effect(void);
 #endif
 void     dynamic_keymap_reset(void);
