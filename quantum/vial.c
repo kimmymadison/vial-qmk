@@ -365,6 +365,15 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
             reload_hall_effect();
             break;
         }
+        case vial_hall_effect_get_handedness: {
+            #ifdef SPLIT_KEYBOARD
+                msg[0] = is_keyboard_left() ? 0 : MATRIX_ROWS / 2;
+            #else
+                msg[0] = MATRIX_ROWS;
+            #endif
+            
+            break;
+        }
     
 #endif
     }

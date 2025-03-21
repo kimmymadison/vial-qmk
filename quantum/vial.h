@@ -53,6 +53,7 @@ enum {
     vial_hall_effect_get_user_config = 0x10,
     vial_hall_effect_set_user_config = 0x11,
     vial_hall_effect_reset = 0x12,
+    vial_hall_effect_get_handedness = 0x13,
 };
 
 enum {
