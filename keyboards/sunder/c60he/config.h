@@ -1,0 +1,25 @@
+// Copyright 2023 squishyliquid (@squishyliquid)
+// SPDX-License-Identifier: GPL-2.0-or-later
+
+#pragma once
+
+#define VIAL_TAP_DANCE_ENTRIES 16
+#define VIAL_COMBO_ENTRIES 16
+#define VIAL_KEY_OVERRIDE_ENTRIES 16
+#define DYNAMIC_KEYMAP_LAYER_COUNT 8
+
+#define DEBUG_MATRIX_SCAN_RATE //
+#define ADC_RESOLUTION ADC_CFGR1_RES_12BIT
+
+#define SERIAL_USART_FULL_DUPLEX   // Enable full duplex operation mode.
+#define SERIAL_USART_TX_PIN GP0    // USART TX pin
+#define SERIAL_USART_RX_PIN GP1    // USART RX pin
+
+#define BOOTMAGIC_ROW 0
+#define BOOTMAGIC_COLUMN 8
+#define BOOTMAGIC_ROW_RIGHT 5
+#define BOOTMAGIC_COLUMN_RIGHT 2
+
+#define MUX_BITS 4
+
+#define ALL_MUX_PINS { GP18, GP19, GP20, GP21 }
