@@ -4,8 +4,6 @@
 
 #define MIN_MAX_BUFFER 5
 
-// #define RESET_POINT 0
-
 #ifndef RAPID_TRIGGER_MODE
 #   define RAPID_TRIGGER_MODE 1
 #endif
@@ -15,7 +13,7 @@
 #endif
 
 #ifndef ACTUATION_POINT
-#   define ACTUATION_POINT 150
+#   define ACTUATION_POINT 170
 #endif
 
 #ifndef SENSITIVITY

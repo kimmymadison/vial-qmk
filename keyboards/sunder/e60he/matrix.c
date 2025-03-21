@@ -155,7 +155,7 @@ void initialise_hall_sensors(void) {
                     uint16_t offset = (analog_value + 50) / 100 * 15; 
 
                     keys[r][c].max_value = analog_value + offset;
-                    keys[r][c].min_value = analog_value + 3;
+                    keys[r][c].min_value = analog_value + 1;
                 }
             }
             wait_ms(5);
@@ -259,7 +259,7 @@ uint8_t matrix_scan(void) {
                 // Rapid Trigger mode disabled
                 if (curr_matrix[row_index] & (1 << col_index)) {
                     // Key is 'pressed'
-                    if (key->curr_pos < config->actuation_point - 10) {
+                    if (key->curr_pos <= config->actuation_point - 10) {
                         curr_matrix[row_index] &= ~(1 << col_index);
                     }
                 } else {
@@ -280,51 +280,40 @@ uint8_t matrix_scan(void) {
     if (TIMER_DIFF_32(timer_now, matrix_timer) >= 500) {
         uprintf("matrix scan rate: %lu\n", get_matrix_scan_rate());
 
-        uprintf("(%u, %u) ", keys[0][8].min_value, keys[0][8].test_value);
-        uprintf("(%u, %u) ", keys[0][7].min_value, keys[0][7].test_value);
-        uprintf("(%u, %u) ", keys[0][6].min_value, keys[0][6].test_value);
-        uprintf("(%u, %u) ", keys[0][5].min_value, keys[0][5].test_value);
-        uprintf("(%u, %u) ", keys[0][4].min_value, keys[0][4].test_value);
-        uprintf("(%u, %u)\n", keys[0][3].min_value, keys[0][3].test_value);
+        uprintf("(%u, %u, %u) ", keys[0][8].curr_pos, keys[0][8].min_value, keys[0][8].test_value);
+        uprintf("(%u, %u, %u) ", keys[0][7].curr_pos, keys[0][7].min_value, keys[0][7].test_value);
+        uprintf("(%u, %u, %u) ", keys[0][6].curr_pos, keys[0][6].min_value, keys[0][6].test_value);
+        uprintf("(%u, %u, %u) ", keys[0][5].curr_pos, keys[0][5].min_value, keys[0][5].test_value);
+        uprintf("(%u, %u, %u) ", keys[0][4].curr_pos, keys[0][4].min_value, keys[0][4].test_value);
+        uprintf("(%u, %u, %u)\n", keys[0][3].curr_pos, keys[0][3].min_value, keys[0][3].test_value);
 
-        uprintf("(%u, %u) ", keys[0][9].min_value, keys[0][9].test_value);
-        uprintf("(%u, %u) ", keys[0][0].min_value, keys[0][0].test_value);
-        uprintf("(%u, %u) ", keys[0][1].min_value, keys[0][1].test_value);
-        uprintf("(%u, %u) ", keys[0][2].min_value, keys[0][2].test_value);
-        uprintf("(%u, %u) ", keys[1][4].min_value, keys[1][4].test_value);
-        uprintf("(%u, %u)\n", keys[1][2].min_value, keys[1][2].test_value);
+        uprintf("(%u, %u, %u) ", keys[0][9].curr_pos, keys[0][9].min_value, keys[0][9].test_value);
+        uprintf("(%u, %u, %u) ", keys[0][0].curr_pos, keys[0][0].min_value, keys[0][0].test_value);
+        uprintf("(%u, %u, %u) ", keys[0][1].curr_pos, keys[0][1].min_value, keys[0][1].test_value);
+        uprintf("(%u, %u, %u) ", keys[0][2].curr_pos, keys[0][2].min_value, keys[0][2].test_value);
+        uprintf("(%u, %u, %u) ", keys[1][4].curr_pos, keys[1][4].min_value, keys[1][4].test_value);
+        uprintf("(%u, %u, %u)\n", keys[1][2].curr_pos, keys[1][2].min_value, keys[1][2].test_value);
 
-        uprintf("(%u, %u) ", keys[1][8].min_value, keys[1][8].test_value);
-        uprintf("(%u, %u) ", keys[1][7].min_value, keys[1][7].test_value);
-        uprintf("(%u, %u) ", keys[1][6].min_value, keys[1][6].test_value);
-        uprintf("(%u, %u) ", keys[1][5].min_value, keys[1][5].test_value);
-        uprintf("(%u, %u) ", keys[1][3].min_value, keys[1][3].test_value);
-        uprintf("(%u, %u)\n", keys[1][1].min_value, keys[1][1].test_value);
+        uprintf("(%u, %u, %u) ", keys[1][8].curr_pos, keys[1][8].min_value, keys[1][8].test_value);
+        uprintf("(%u, %u, %u) ", keys[1][7].curr_pos, keys[1][7].min_value, keys[1][7].test_value);
+        uprintf("(%u, %u, %u) ", keys[1][6].curr_pos, keys[1][6].min_value, keys[1][6].test_value);
+        uprintf("(%u, %u, %u) ", keys[1][5].curr_pos, keys[1][5].min_value, keys[1][5].test_value);
+        uprintf("(%u, %u, %u) ", keys[1][3].curr_pos, keys[1][3].min_value, keys[1][3].test_value);
+        uprintf("(%u, %u, %u)\n", keys[1][1].curr_pos, keys[1][1].min_value, keys[1][1].test_value);
 
-        uprintf("(%u, %u) ", keys[1][9].min_value, keys[1][9].test_value);
-        uprintf("(%u, %u) ", keys[1][0].min_value, keys[1][0].test_value);
-        uprintf("(%u, %u) ", keys[2][7].min_value, keys[2][7].test_value);
-        uprintf("(%u, %u) ", keys[2][6].min_value, keys[2][6].test_value);
-        uprintf("(%u, %u) ", keys[2][5].min_value, keys[2][5].test_value);
-        uprintf("(%u, %u)\n", keys[2][4].min_value, keys[2][4].test_value);
+        uprintf("(%u, %u, %u) ", keys[1][9].curr_pos, keys[1][9].min_value, keys[1][9].test_value);
+        uprintf("(%u, %u, %u) ", keys[1][0].curr_pos, keys[1][0].min_value, keys[1][0].test_value);
+        uprintf("(%u, %u, %u) ", keys[2][7].curr_pos, keys[2][7].min_value, keys[2][7].test_value);
+        uprintf("(%u, %u, %u) ", keys[2][6].curr_pos, keys[2][6].min_value, keys[2][6].test_value);
+        uprintf("(%u, %u, %u) ", keys[2][5].curr_pos, keys[2][5].min_value, keys[2][5].test_value);
+        uprintf("(%u, %u, %u)\n", keys[2][4].curr_pos, keys[2][4].min_value, keys[2][4].test_value);
 
-        uprintf("(%u, %u) ", keys[2][8].min_value, keys[2][8].test_value);
-        uprintf("(%u, %u) ", keys[2][9].min_value, keys[2][9].test_value);
-        uprintf("(%u, %u) ", keys[2][0].min_value, keys[2][0].test_value);
-        uprintf("(%u, %u) ", keys[2][1].min_value, keys[2][1].test_value);
-        uprintf("(%u, %u) ", keys[2][2].min_value, keys[2][2].test_value);
-        uprintf("(%u, %u)\n\n", keys[2][3].min_value, keys[2][3].test_value);
-        
-        // uprintf("(%u, %u, %u)\n", keys[1][4].curr_pos, keys[1][4].test_value, keys[1][4].min_value);
-        // uprintf("(%u, %u, %u)\n", keys[1][2].curr_pos, keys[1][2].test_value, keys[1][2].min_value);
-        // uprintf("(%u, %u, %u)\n", keys[1][8].curr_pos, keys[1][8].test_value, keys[1][8].min_value);
-        // uprintf("(%u, %u, %u)\n", keys[1][7].curr_pos, keys[1][7].test_value, keys[1][7].min_value);
-        // uprintf("(%u, %u, %u)\n", keys[1][6].curr_pos, keys[1][6].test_value, keys[1][6].min_value);
-        // uprintf("(%u, %u, %u)\n", keys[1][5].curr_pos, keys[1][5].test_value, keys[1][5].min_value);
-        // uprintf("(%u, %u, %u)\n", keys[1][3].curr_pos, keys[1][3].test_value, keys[1][3].min_value);
-        // uprintf("(%u, %u, %u)\n", keys[1][1].curr_pos, keys[1][1].test_value, keys[1][1].min_value);
-        // uprintf("(%u, %u, %u)\n", keys[1][9].curr_pos, keys[1][9].test_value, keys[1][9].min_value);
-        // uprintf("(%u, %u, %u)\n\n", keys[1][0].curr_pos, keys[1][0].test_value, keys[1][0].min_value);
+        uprintf("(%u, %u, %u) ", keys[2][8].curr_pos, keys[2][8].min_value, keys[2][8].test_value);
+        uprintf("(%u, %u, %u) ", keys[2][9].curr_pos, keys[2][9].min_value, keys[2][9].test_value);
+        uprintf("(%u, %u, %u) ", keys[2][0].curr_pos, keys[2][0].min_value, keys[2][0].test_value);
+        uprintf("(%u, %u, %u) ", keys[2][1].curr_pos, keys[2][1].min_value, keys[2][1].test_value);
+        uprintf("(%u, %u, %u) ", keys[2][2].curr_pos, keys[2][2].min_value, keys[2][2].test_value);
+        uprintf("(%u, %u, %u)\n\n", keys[2][3].curr_pos, keys[2][3].min_value, keys[2][3].test_value);
 
         // uprintf("(%u, %u)\n", user_config.travel_distance, user_config.sensitivity);
 

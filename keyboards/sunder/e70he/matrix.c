@@ -495,7 +495,7 @@ uint8_t matrix_scan(void) {
                 // Rapid Trigger mode disabled
                 if (curr_matrix[row_index] & (1 << col_index)) {
                     // Key is 'pressed'
-                    if (key->curr_pos < config->actuation_point - 10) {
+                    if (key->curr_pos <= config->actuation_point - 10) {
                         curr_matrix[row_index] &= ~(1 << col_index);
                     }
                 } else {

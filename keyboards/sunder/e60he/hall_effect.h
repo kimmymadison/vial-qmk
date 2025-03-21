@@ -4,8 +4,6 @@
 
 #define MIN_MAX_BUFFER 5
 
-#define RESET_POINT 10
-
 #define FILTER_SIZE 16
 #define FILTER_BITS 4
 
@@ -18,7 +16,7 @@
 #endif
 
 #ifndef ACTUATION_POINT
-#   define ACTUATION_POINT 150
+#   define ACTUATION_POINT 170
 #endif
 
 #ifndef SENSITIVITY
