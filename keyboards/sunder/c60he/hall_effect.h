@@ -12,7 +12,7 @@
 #endif
 
 #ifndef TRAVEL_DISTANCE
-#   define TRAVEL_DISTANCE 340
+#   define TRAVEL_DISTANCE 350
 #endif
 
 #ifndef ACTUATION_POINT

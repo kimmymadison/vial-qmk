@@ -1,8 +1,8 @@
 # Sunder E60 HE
 
-![Sunder E60 HE]()
+![Sunder E60 HE](https://cdn.shopify.com/s/files/1/0697/0795/6447/files/hall-effect-split-keyboard-e60-grey.jpg?v=1750839340)
 
-A Hall effect split keyboard that is compatible with GEON Raw HE and Gateron Magnetic Jade switches.
+The E60 is a Hall effect split 5x12 ortholinear keyboard that is compatible with GEON Raw HE and Gateron Magnetic Jade switches.
 
 * Keyboard Maintainer: [squishyliquid](https://github.com/squishyliquid)
 * Hardware Supported: Sunder E60 HE

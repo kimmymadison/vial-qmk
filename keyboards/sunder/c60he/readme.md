@@ -1,8 +1,8 @@
 # Sunder C60 HE
 
-![Sunder C60 HE]()
+![Sunder C60 HE](https://cdn.shopify.com/s/files/1/0697/0795/6447/files/hall-effect-split-keyboard-c60-grey.jpg?v=1750839282)
 
-A Hall effect split keyboard that is compatible with GEON Raw HE and Gateron Magnetic Jade switches.
+The C60 is a Hall effect split keyboard with 4x6 column staggered keys and 3 thumb keys that is compatible with GEON Raw HE and Gateron Magnetic Jade switches.
 
 * Keyboard Maintainer: [squishyliquid](https://github.com/squishyliquid)
 * Hardware Supported: Sunder C60 HE
