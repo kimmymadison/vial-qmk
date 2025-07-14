@@ -4,9 +4,6 @@
 
 #define MIN_MAX_BUFFER 5
 
-#define FILTER_SIZE 16
-#define FILTER_BITS 4
-
 #ifndef RAPID_TRIGGER_MODE
 #   define RAPID_TRIGGER_MODE 1
 #endif
@@ -41,8 +38,6 @@ typedef struct {
     uint16_t prev_pos;
     uint16_t max_value;
     uint16_t min_value;
-    uint16_t sma_filter[FILTER_SIZE];
-    uint16_t sma_sum;
     #if defined(DEBUG_MATRIX_SCAN_RATE)
     uint16_t test_value;
     #endif
