@@ -9,8 +9,7 @@
     "usb": {
         "device_version": "1.0.0",
         "pid": "0x7003",
-        "vid": "0x1771",
-        "force_nkro": true
+        "vid": "0x1771"
     },
     "features": {
         "bootmagic": true,
@@ -19,6 +18,11 @@
         "console": true,
         "command": false,
         "nkro": true
+    },
+    "host": { 
+        "default": { 
+            "nkro": true
+        } 
     },
     "matrix_pins": {
         "custom": true,

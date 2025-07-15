@@ -85,7 +85,7 @@ void matrix_print(void) {
 }
 
 #define ADC_NUM_CHANNELS 3
-#define ADC_BUFFER_DEPTH 2
+#define ADC_BUFFER_DEPTH 1
 #define INIT_ADC_BUFFER_DEPTH 32
 
 static adcsample_t adc_buf[ADC_NUM_CHANNELS * ADC_BUFFER_DEPTH];
