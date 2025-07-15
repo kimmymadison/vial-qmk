@@ -115,52 +115,24 @@ int dynamic_keymap_set_alt_repeat_key(uint8_t index, const vial_alt_repeat_key_e
 
 #ifdef VIAL_HALL_EFFECT_ENABLE
 int dynamic_keymap_get_hall_effect_key_config(uint8_t row, uint8_t col, key_config_t *key) {
-    void *address = (void*)(VIAL_HALL_EFFECT_EEPROM_ADDR) + sizeof(uint16_t) + sizeof(uint16_t) + ((row * MATRIX_COLS + col) * sizeof(key_config_t));
-    eeprom_read_block(key, address, sizeof(key_config_t));
-    
-    return 0;
+    return nvm_dynamic_keymap_get_hall_effect_key_config(row, col, key);
 }
 
 int dynamic_keymap_set_hall_effect_key_config(uint8_t row, uint8_t col, key_config_t *key) {
-    void *address = (void*)(VIAL_HALL_EFFECT_EEPROM_ADDR) + sizeof(uint16_t) + sizeof(uint16_t) + ((row * MATRIX_COLS + col) * sizeof(key_config_t));
-    eeprom_write_block(key, address, sizeof(key_config_t));
-    
-    return 0;
+    return nvm_dynamic_keymap_set_hall_effect_key_config(row, col, key);
 }
 
 int dynamic_keymap_get_hall_effect_user_config(uint8_t index, uint16_t *config) {
-    void *address = (void*)(VIAL_HALL_EFFECT_EEPROM_ADDR + index * sizeof(uint16_t));
-    eeprom_read_block(config, address, sizeof(uint16_t));
-    
-    return 0;
+    return nvm_dynamic_keymap_get_hall_effect_user_config(index, config);
 }
 
 int dynamic_keymap_set_hall_effect_user_config(uint8_t index, uint16_t *config) {
-    void *address = (void*)(VIAL_HALL_EFFECT_EEPROM_ADDR + index * sizeof(uint16_t));
-    eeprom_write_block(config, address, sizeof(uint16_t));
-    
-    return 0;
+    return nvm_dynamic_keymap_set_hall_effect_user_config(index, config);
 }
 
 void dynamic_keymap_reset_hall_effect(void) {
-    user_config.travel_distance = TRAVEL_DISTANCE;
-    user_config.sensitivity = SENSITIVITY;
-    dynamic_keymap_set_hall_effect_user_config(0, &user_config.travel_distance);
-    dynamic_keymap_set_hall_effect_user_config(1, &user_config.sensitivity);
-
-    key_config_t key = {
-        .actuation_point = ACTUATION_POINT,
-        .mode = RAPID_TRIGGER_MODE,
-    };
-
-    for (int row = 0; row < MATRIX_ROWS; row++) {
-        for (int col = 0; col < MATRIX_COLS; col++) {
-            user_config.key_config[row][col] = key;
-            dynamic_keymap_set_hall_effect_key_config(row, col, &key);
-        }
-    }
+    nvm_dynamic_keymap_reset_hall_effect();
 }
-
 #endif
 
 void dynamic_keymap_reset(void) {

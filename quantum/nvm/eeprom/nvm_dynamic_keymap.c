@@ -90,9 +90,19 @@ STATIC_ASSERT(DYNAMIC_KEYMAP_EEPROM_MAX_ADDR <= 65535, "DYNAMIC_KEYMAP_EEPROM_MA
 #define VIAL_ALT_REPEAT_KEY_SIZE 0
 #endif
 
+// Hall Effect
+#define VIAL_HALL_EFFECT_EEPROM_ADDR (VIAL_ALT_REPEAT_KEY_EEPROM_ADDR + VIAL_ALT_REPEAT_KEY_SIZE)
+
+#ifdef VIAL_HALL_EFFECT_ENABLE
+#include "hall_effect.h"
+#define VIAL_HALL_EFFECT_SIZE (sizeof(user_config_t))
+#else
+#define VIAL_HALL_EFFECT_SIZE 0
+#endif
+
 // Dynamic macro
 #ifndef DYNAMIC_KEYMAP_MACRO_EEPROM_ADDR
-#    define DYNAMIC_KEYMAP_MACRO_EEPROM_ADDR (VIAL_ALT_REPEAT_KEY_EEPROM_ADDR + VIAL_ALT_REPEAT_KEY_SIZE)
+#    define DYNAMIC_KEYMAP_MACRO_EEPROM_ADDR (VIAL_HALL_EFFECT_EEPROM_ADDR + VIAL_HALL_EFFECT_SIZE)
 #endif
 
 // Sanity check that dynamic keymaps fit in available EEPROM
@@ -384,5 +394,54 @@ int nvm_dynamic_keymap_set_alt_repeat_key(uint8_t index, const vial_alt_repeat_k
     eeprom_write_block(entry, address, sizeof(vial_alt_repeat_key_entry_t));
 
     return 0;
+}
+#endif
+
+#ifdef VIAL_HALL_EFFECT_ENABLE
+int nvm_dynamic_keymap_get_hall_effect_key_config(uint8_t row, uint8_t col, key_config_t *key) {
+    void *address = (void*)(VIAL_HALL_EFFECT_EEPROM_ADDR) + sizeof(uint16_t) + sizeof(uint16_t) + ((row * MATRIX_COLS + col) * sizeof(key_config_t));
+    eeprom_read_block(key, address, sizeof(key_config_t));
+    
+    return 0;
+}
+
+int nvm_dynamic_keymap_set_hall_effect_key_config(uint8_t row, uint8_t col, key_config_t *key) {
+    void *address = (void*)(VIAL_HALL_EFFECT_EEPROM_ADDR) + sizeof(uint16_t) + sizeof(uint16_t) + ((row * MATRIX_COLS + col) * sizeof(key_config_t));
+    eeprom_write_block(key, address, sizeof(key_config_t));
+    
+    return 0;
+}
+
+int nvm_dynamic_keymap_get_hall_effect_user_config(uint8_t index, uint16_t *config) {
+    void *address = (void*)(VIAL_HALL_EFFECT_EEPROM_ADDR + index * sizeof(uint16_t));
+    eeprom_read_block(config, address, sizeof(uint16_t));
+    
+    return 0;
+}
+
+int nvm_dynamic_keymap_set_hall_effect_user_config(uint8_t index, uint16_t *config) {
+    void *address = (void*)(VIAL_HALL_EFFECT_EEPROM_ADDR + index * sizeof(uint16_t));
+    eeprom_write_block(config, address, sizeof(uint16_t));
+    
+    return 0;
+}
+
+void nvm_dynamic_keymap_reset_hall_effect(void) {
+    user_config.travel_distance = TRAVEL_DISTANCE;
+    user_config.sensitivity = SENSITIVITY;
+    nvm_dynamic_keymap_set_hall_effect_user_config(0, &user_config.travel_distance);
+    nvm_dynamic_keymap_set_hall_effect_user_config(1, &user_config.sensitivity);
+
+    key_config_t key = {
+        .actuation_point = ACTUATION_POINT,
+        .mode = RAPID_TRIGGER_MODE,
+    };
+
+    for (int row = 0; row < MATRIX_ROWS; row++) {
+        for (int col = 0; col < MATRIX_COLS; col++) {
+            user_config.key_config[row][col] = key;
+            nvm_dynamic_keymap_set_hall_effect_key_config(row, col, &key);
+        }
+    }
 }
 #endif

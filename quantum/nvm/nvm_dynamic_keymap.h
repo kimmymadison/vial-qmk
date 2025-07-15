@@ -50,3 +50,11 @@ int nvm_dynamic_keymap_set_key_override(uint8_t index, const vial_key_override_e
 int nvm_dynamic_keymap_get_alt_repeat_key(uint8_t index, vial_alt_repeat_key_entry_t *entry);
 int nvm_dynamic_keymap_set_alt_repeat_key(uint8_t index, const vial_alt_repeat_key_entry_t *entry);
 #endif
+
+#ifdef VIAL_HALL_EFFECT_ENABLE
+int nvm_dynamic_keymap_get_hall_effect_key_config(uint8_t row, uint8_t col, key_config_t *key);
+int nvm_dynamic_keymap_set_hall_effect_key_config(uint8_t row, uint8_t col, key_config_t *key);
+int nvm_dynamic_keymap_get_hall_effect_user_config(uint8_t index, uint16_t *config);
+int nvm_dynamic_keymap_set_hall_effect_user_config(uint8_t index, uint16_t *config);
+void nvm_dynamic_keymap_reset_hall_effect(void);
+#endif
