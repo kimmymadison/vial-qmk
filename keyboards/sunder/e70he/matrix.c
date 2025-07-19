@@ -6,6 +6,7 @@
 #include "matrix.h"
 #include "quantum.h"
 #include "hall_effect.h"
+#include "hardware/gpio.h"
 
 #ifdef SPLIT_KEYBOARD
 #    include "split_common/split_util.h"
@@ -83,18 +84,83 @@ void matrix_print(void) {
     //
 }
 
-static inline void gpio_atomic_set_pin_output_low(pin_t pin) {
-    ATOMIC_BLOCK_FORCEON {
-        gpio_set_pin_output(pin);
-        gpio_write_pin_low(pin);
+#define ADC_NUM_CHANNELS 3
+#define ADC_BUFFER_DEPTH 1
+#define INIT_ADC_BUFFER_DEPTH 32
+
+static adcsample_t adc_buf[ADC_NUM_CHANNELS * ADC_BUFFER_DEPTH];
+static adcsample_t init_adc_buf[ADC_NUM_CHANNELS * INIT_ADC_BUFFER_DEPTH];
+
+void average_adc_buffer(uint16_t *output, const adcsample_t *buffer, uint8_t buffer_depth) {
+    for (uint8_t ch = 0; ch < ADC_NUM_CHANNELS; ch++) {
+        uint32_t sum = 0;
+        for (uint8_t i = 0; i < buffer_depth; i++) {
+            sum += buffer[i * ADC_NUM_CHANNELS + ch];
+        }
+        output[ch] = (sum + (buffer_depth >> 1)) >> __builtin_ctz(buffer_depth);
     }
 }
 
-static inline void gpio_atomic_set_pin_output_high(pin_t pin) {
-    ATOMIC_BLOCK_FORCEON {
-        gpio_set_pin_output(pin);
-        gpio_write_pin_high(pin);
+const ADCConfig adc_cfg = {
+    .div_int  = 0,
+    .div_frac = 0,
+    .shift    = false,
+};
+
+volatile uint32_t adc_cb_counter = 0;
+
+volatile bool adc_conversion_done = false;
+
+static void adc_end_callback(ADCDriver *adcp) {
+    (void)adcp;
+    adc_conversion_done = true;
+}
+
+static void adc_error_callback(ADCDriver *adcp, adcerror_t err) {
+    (void)adcp;
+    (void)err;
+    uprintf("ADC error!\n");
+}
+
+static const ADCConversionGroup adcgrpcfg = {
+    .circular     = false,
+    .num_channels = ADC_NUM_CHANNELS,
+    .end_cb       = adc_end_callback,
+    .error_cb     = adc_error_callback,
+    .channel_mask = RP_ADC_CH0 | RP_ADC_CH1 | RP_ADC_CH2,
+};
+
+void adc_dma_init(void) {
+    for (uint8_t r = 0; r < ROWS_PER_HAND; r++) {
+        palSetLineMode(row_pins[r], PAL_MODE_INPUT_ANALOG);
     }
+    adcStop(&ADCD1);
+    adcStart(&ADCD1, &adc_cfg);
+    adcConvert(&ADCD1, &adcgrpcfg, adc_buf, ADC_BUFFER_DEPTH);
+}
+
+void init_mux_pins(void) {
+    for (int i = 0; i < MUX_BITS; i++) {
+        gpio_set_pin_output(mux_pins[i]);
+        gpio_write_pin_low(mux_pins[i]);
+    }
+}
+
+void set_mux_pins_batch(uint8_t col_index, const pin_t mux_pins[4]) {
+    uint32_t set_mask = 0;
+    uint32_t clr_mask = 0;
+
+    for (int i = 0; i < 4; i++) {
+        if (col_index & (1 << i)) {
+            set_mask |= (1u << mux_pins[i]);
+        } else {
+            clr_mask |= (1u << mux_pins[i]);
+        }
+    }
+
+    // Clear LOWs first, then set HIGHs
+    sio_hw->gpio_clr = clr_mask;
+    sio_hw->gpio_set = set_mask;
 }
 
 void bootmagic_scan(void) {
@@ -113,164 +179,158 @@ void bootmagic_scan(void) {
         col2 = BOOTMAGIC_COLUMN_RIGHT_2;
     }
 #endif
-    ( col       & 1) ? gpio_atomic_set_pin_output_high(mux_pins[0]) : gpio_atomic_set_pin_output_low(mux_pins[0]);
-    ((col >> 1) & 1) ? gpio_atomic_set_pin_output_high(mux_pins[1]) : gpio_atomic_set_pin_output_low(mux_pins[1]);
-    ((col >> 2) & 1) ? gpio_atomic_set_pin_output_high(mux_pins[2]) : gpio_atomic_set_pin_output_low(mux_pins[2]);
-    ((col >> 3) & 1) ? gpio_atomic_set_pin_output_high(mux_pins[3]) : gpio_atomic_set_pin_output_low(mux_pins[3]);
-    wait_us(10);
+    set_mux_pins_batch(col, mux_pins);
+    adcConvert(&ADCD1, &adcgrpcfg, adc_buf, ADC_BUFFER_DEPTH);
 
-    uint16_t pin_1 = analogReadPin(row_pins[row]);
+    // uint16_t adc_channel_avg_1[ADC_NUM_CHANNELS];
+    // average_adc_buffer(adc_channel_avg_1, adc_buf, ADC_BUFFER_DEPTH);
 
-    ( col2       & 1) ? gpio_atomic_set_pin_output_high(mux_pins[0]) : gpio_atomic_set_pin_output_low(mux_pins[0]);
-    ((col2 >> 1) & 1) ? gpio_atomic_set_pin_output_high(mux_pins[1]) : gpio_atomic_set_pin_output_low(mux_pins[1]);
-    ((col2 >> 2) & 1) ? gpio_atomic_set_pin_output_high(mux_pins[2]) : gpio_atomic_set_pin_output_low(mux_pins[2]);
-    ((col2 >> 3) & 1) ? gpio_atomic_set_pin_output_high(mux_pins[3]) : gpio_atomic_set_pin_output_low(mux_pins[3]);
-    wait_us(10);
+    uint16_t analog_value_1 = adc_buf[row];
 
-    uint16_t pin_2 = analogReadPin(row_pins[row2]);
+    set_mux_pins_batch(col2, mux_pins);
+    adcConvert(&ADCD1, &adcgrpcfg, adc_buf, ADC_BUFFER_DEPTH);
 
-    if (pin_1 + pin_2 < 2900) {
+    // uint16_t adc_channel_avg_2[ADC_NUM_CHANNELS];
+    // average_adc_buffer(adc_channel_avg_2, adc_buf, ADC_BUFFER_DEPTH);
+
+    uint16_t analog_value_2 = adc_buf[row2];
+
+    if (analog_value_1 + analog_value_2 < 2900) {
         // Jump to bootloader.
         bootloader_jump();
     }
 }
 
 void initialise_hall_sensors(void) {
-    for (uint8_t i = 0; i < 3; i++) {
-        for (uint8_t c = 0; c < MATRIX_COLS; c++) {
-            // Select MUX channel
-            ( c       & 1) ? gpio_atomic_set_pin_output_high(mux_pins[0]) : gpio_atomic_set_pin_output_low(mux_pins[0]);
-            ((c >> 1) & 1) ? gpio_atomic_set_pin_output_high(mux_pins[1]) : gpio_atomic_set_pin_output_low(mux_pins[1]);
-            ((c >> 2) & 1) ? gpio_atomic_set_pin_output_high(mux_pins[2]) : gpio_atomic_set_pin_output_low(mux_pins[2]);
-            ((c >> 3) & 1) ? gpio_atomic_set_pin_output_high(mux_pins[3]) : gpio_atomic_set_pin_output_low(mux_pins[3]);
-            wait_us(10);
-            
-            for (uint8_t r = 0; r < ROWS_PER_HAND; r++) {
-                if (is_keyboard_left()) {
-                    if ((r == 0 && (c == 0 || c == 7 || c == 12)) ||
-                        (r == 1 && (c == 11 || c == 12)) ||
-                        (r == 2 && c == 0)) {
-                        continue;
-                    }
-                } else if (c == 12 && (r == 0 || r == 1)) {
+    for (uint8_t c = 0; c < MATRIX_COLS; c++) {
+        set_mux_pins_batch(c, mux_pins);
+
+        adcConvert(&ADCD1, &adcgrpcfg, init_adc_buf, INIT_ADC_BUFFER_DEPTH);
+        uint16_t adc_channel_avg[ADC_NUM_CHANNELS];
+        average_adc_buffer(adc_channel_avg, init_adc_buf, INIT_ADC_BUFFER_DEPTH);
+        
+        for (uint8_t r = 0; r < ROWS_PER_HAND; r++) {
+            if (is_keyboard_left()) {
+                if ((r == 0 && (c == 0 || c == 7 || c == 12)) ||
+                    (r == 1 && (c == 11 || c == 12)) ||
+                    (r == 2 && c == 0)) {
                     continue;
                 }
+            } else if (c == 12 && (r == 0 || r == 1)) {
+                continue;
+            }
 
-                uint16_t analog_value = analogReadPin(row_pins[r]);
+            uint16_t analog_value = adc_channel_avg[r];
 
-                if (i == 2) {
-                    keys[r][c].dynamic_actuation = false;
-                    keys[r][c].curr_pos = 0;
-                    keys[r][c].prev_pos = 0;
-                    
-                    uint16_t offset = (analog_value + 100) / 200;
+            keys[r][c].dynamic_actuation = false;
+            keys[r][c].curr_pos = 0;
+            keys[r][c].prev_pos = 0;
+            
+            uint16_t offset = (analog_value + 100) / 200;
 
-                    keys[r][c].max_value = analog_value - offset;
+            keys[r][c].max_value = analog_value - offset;
 
-                    if (analog_value >= 2100) {
-                        keys[r][c].value_05 = ((uint32_t)analog_value * 98 + 50) / 100;
-                        keys[r][c].value_10 = ((uint32_t)analog_value * 95 + 50) / 100;
-                        keys[r][c].value_15 = ((uint32_t)analog_value * 92 + 50) / 100;
-                        keys[r][c].value_20 = ((uint32_t)analog_value * 87 + 50) / 100;
-                        keys[r][c].value_25 = ((uint32_t)analog_value * 81 + 50) / 100;
-                        keys[r][c].value_30 = ((uint32_t)analog_value * 72 + 50) / 100;
-                        keys[r][c].min_value = ((uint32_t)analog_value * 72 + 50) / 100 - offset;
+            if (analog_value >= 2100) {
+                keys[r][c].value_05 = ((uint32_t)analog_value * 98 + 50) / 100;
+                keys[r][c].value_10 = ((uint32_t)analog_value * 95 + 50) / 100;
+                keys[r][c].value_15 = ((uint32_t)analog_value * 92 + 50) / 100;
+                keys[r][c].value_20 = ((uint32_t)analog_value * 87 + 50) / 100;
+                keys[r][c].value_25 = ((uint32_t)analog_value * 81 + 50) / 100;
+                keys[r][c].value_30 = ((uint32_t)analog_value * 72 + 50) / 100;
+                keys[r][c].min_value = ((uint32_t)analog_value * 72 + 50) / 100 - offset;
 
-                    } else if (analog_value >= 2000) {
-                        keys[r][c].value_05 = ((uint32_t)analog_value * 98 + 50) / 100;
-                        keys[r][c].value_10 = ((uint32_t)analog_value * 95 + 50) / 100;
-                        keys[r][c].value_15 = ((uint32_t)analog_value * 91 + 50) / 100;
-                        keys[r][c].value_20 = ((uint32_t)analog_value * 86 + 50) / 100;
-                        keys[r][c].value_25 = ((uint32_t)analog_value * 78 + 50) / 100;
-                        keys[r][c].value_30 = ((uint32_t)analog_value * 68 + 50) / 100;
-                        keys[r][c].min_value = ((uint32_t)analog_value * 68 + 50) / 100 - offset;
+            } else if (analog_value >= 2000) {
+                keys[r][c].value_05 = ((uint32_t)analog_value * 98 + 50) / 100;
+                keys[r][c].value_10 = ((uint32_t)analog_value * 95 + 50) / 100;
+                keys[r][c].value_15 = ((uint32_t)analog_value * 91 + 50) / 100;
+                keys[r][c].value_20 = ((uint32_t)analog_value * 86 + 50) / 100;
+                keys[r][c].value_25 = ((uint32_t)analog_value * 78 + 50) / 100;
+                keys[r][c].value_30 = ((uint32_t)analog_value * 68 + 50) / 100;
+                keys[r][c].min_value = ((uint32_t)analog_value * 68 + 50) / 100 - offset;
 
-                    } else if (analog_value >= 1900) {
-                        keys[r][c].value_05 = ((uint32_t)analog_value * 98 + 50) / 100;
-                        keys[r][c].value_10 = ((uint32_t)analog_value * 95 + 50) / 100;
-                        keys[r][c].value_15 = ((uint32_t)analog_value * 90 + 50) / 100;
-                        keys[r][c].value_20 = ((uint32_t)analog_value * 85 + 50) / 100;
-                        keys[r][c].value_25 = ((uint32_t)analog_value * 77 + 50) / 100;
-                        keys[r][c].value_30 = ((uint32_t)analog_value * 66 + 50) / 100;
-                        keys[r][c].min_value = ((uint32_t)analog_value * 66 + 50) / 100 - offset;
-                        
-                    } else if (analog_value >= 1800) {
-                        keys[r][c].value_05 = ((uint32_t)analog_value * 98 + 50) / 100;
-                        keys[r][c].value_10 = ((uint32_t)analog_value * 94 + 50) / 100;
-                        keys[r][c].value_15 = ((uint32_t)analog_value * 90 + 50) / 100;
-                        keys[r][c].value_20 = ((uint32_t)analog_value * 84 + 50) / 100;
-                        keys[r][c].value_25 = ((uint32_t)analog_value * 75 + 50) / 100;
-                        keys[r][c].value_30 = ((uint32_t)analog_value * 64 + 50) / 100;
-                        keys[r][c].min_value = ((uint32_t)analog_value * 64 + 50) / 100 - offset;
-                        
-                    } else if (analog_value >= 1700) {
-                        keys[r][c].value_05 = ((uint32_t)analog_value * 98 + 50) / 100;
-                        keys[r][c].value_10 = ((uint32_t)analog_value * 94 + 50) / 100;
-                        keys[r][c].value_15 = ((uint32_t)analog_value * 89 + 50) / 100;
-                        keys[r][c].value_20 = ((uint32_t)analog_value * 84 + 50) / 100;
-                        keys[r][c].value_25 = ((uint32_t)analog_value * 75 + 50) / 100;
-                        keys[r][c].value_30 = ((uint32_t)analog_value * 66 + 50) / 100;
-                        keys[r][c].min_value = ((uint32_t)analog_value * 66 + 50) / 100 - offset;
-                        
-                    } else if (analog_value >= 1650) {
-                        keys[r][c].value_05 = ((uint32_t)analog_value * 97 + 50) / 100;
-                        keys[r][c].value_10 = ((uint32_t)analog_value * 94 + 50) / 100;
-                        keys[r][c].value_15 = ((uint32_t)analog_value * 89 + 50) / 100;
-                        keys[r][c].value_20 = ((uint32_t)analog_value * 83 + 50) / 100;
-                        keys[r][c].value_25 = ((uint32_t)analog_value * 74 + 50) / 100;
-                        keys[r][c].value_30 = ((uint32_t)analog_value * 68 + 50) / 100;
-                        keys[r][c].min_value = ((uint32_t)analog_value * 68 + 50) / 100 - offset;
-                        
-                    } else if (analog_value >= 1600) {
-                        keys[r][c].value_05 = ((uint32_t)analog_value * 98 + 50) / 100;
-                        keys[r][c].value_10 = ((uint32_t)analog_value * 94 + 50) / 100;
-                        keys[r][c].value_15 = ((uint32_t)analog_value * 90 + 50) / 100;
-                        keys[r][c].value_20 = ((uint32_t)analog_value * 83 + 50) / 100;
-                        keys[r][c].value_25 = ((uint32_t)analog_value * 75 + 50) / 100;
-                        keys[r][c].value_30 = ((uint32_t)analog_value * 70 + 50) / 100;
-                        keys[r][c].min_value = ((uint32_t)analog_value * 70 + 50) / 100 - offset;
-                        
-                    } else if (analog_value >= 1550) {
-                        keys[r][c].value_05 = ((uint32_t)analog_value * 98 + 50) / 100;
-                        keys[r][c].value_10 = ((uint32_t)analog_value * 94 + 50) / 100;
-                        keys[r][c].value_15 = ((uint32_t)analog_value * 89 + 50) / 100;
-                        keys[r][c].value_20 = ((uint32_t)analog_value * 82 + 50) / 100;
-                        keys[r][c].value_25 = ((uint32_t)analog_value * 75 + 50) / 100;
-                        keys[r][c].value_30 = ((uint32_t)analog_value * 71 + 50) / 100;
-                        keys[r][c].min_value = ((uint32_t)analog_value * 71 + 50) / 100 - offset;
-                        
-                    } else if (analog_value >= 1500) {
-                        keys[r][c].value_05 = ((uint32_t)analog_value * 98 + 50) / 100;
-                        keys[r][c].value_10 = ((uint32_t)analog_value * 94 + 50) / 100;
-                        keys[r][c].value_15 = ((uint32_t)analog_value * 89 + 50) / 100;
-                        keys[r][c].value_20 = ((uint32_t)analog_value * 82 + 50) / 100;
-                        keys[r][c].value_25 = ((uint32_t)analog_value * 75 + 50) / 100;
-                        keys[r][c].value_30 = 0;
-                        keys[r][c].min_value = ((uint32_t)analog_value * 74 + 50) / 100;
-                        
-                    } else if (analog_value >= 1400) {
-                        keys[r][c].value_05 = ((uint32_t)analog_value * 98 + 50) / 100;
-                        keys[r][c].value_10 = ((uint32_t)analog_value * 94 + 50) / 100;
-                        keys[r][c].value_15 = ((uint32_t)analog_value * 89 + 50) / 100;
-                        keys[r][c].value_20 = ((uint32_t)analog_value * 82 + 50) / 100;
-                        keys[r][c].value_25 = 0;
-                        keys[r][c].value_30 = 0;
-                        keys[r][c].min_value = ((uint32_t)analog_value * 78 + 50) / 100;
-                        
-                    } else {
-                        keys[r][c].value_05 = ((uint32_t)analog_value * 98 + 50) / 100;
-                        keys[r][c].value_10 = ((uint32_t)analog_value * 94 + 50) / 100;
-                        keys[r][c].value_15 = ((uint32_t)analog_value * 89 + 50) / 100;
-                        keys[r][c].value_20 = 0;
-                        keys[r][c].value_25 = 0;
-                        keys[r][c].value_30 = 0;
-                        keys[r][c].min_value = ((uint32_t)analog_value * 85 + 50) / 100;
-                        
-                    }
-                }
+            } else if (analog_value >= 1900) {
+                keys[r][c].value_05 = ((uint32_t)analog_value * 98 + 50) / 100;
+                keys[r][c].value_10 = ((uint32_t)analog_value * 95 + 50) / 100;
+                keys[r][c].value_15 = ((uint32_t)analog_value * 90 + 50) / 100;
+                keys[r][c].value_20 = ((uint32_t)analog_value * 85 + 50) / 100;
+                keys[r][c].value_25 = ((uint32_t)analog_value * 77 + 50) / 100;
+                keys[r][c].value_30 = ((uint32_t)analog_value * 66 + 50) / 100;
+                keys[r][c].min_value = ((uint32_t)analog_value * 66 + 50) / 100 - offset;
+                
+            } else if (analog_value >= 1800) {
+                keys[r][c].value_05 = ((uint32_t)analog_value * 98 + 50) / 100;
+                keys[r][c].value_10 = ((uint32_t)analog_value * 94 + 50) / 100;
+                keys[r][c].value_15 = ((uint32_t)analog_value * 90 + 50) / 100;
+                keys[r][c].value_20 = ((uint32_t)analog_value * 84 + 50) / 100;
+                keys[r][c].value_25 = ((uint32_t)analog_value * 75 + 50) / 100;
+                keys[r][c].value_30 = ((uint32_t)analog_value * 64 + 50) / 100;
+                keys[r][c].min_value = ((uint32_t)analog_value * 64 + 50) / 100 - offset;
+                
+            } else if (analog_value >= 1700) {
+                keys[r][c].value_05 = ((uint32_t)analog_value * 98 + 50) / 100;
+                keys[r][c].value_10 = ((uint32_t)analog_value * 94 + 50) / 100;
+                keys[r][c].value_15 = ((uint32_t)analog_value * 89 + 50) / 100;
+                keys[r][c].value_20 = ((uint32_t)analog_value * 84 + 50) / 100;
+                keys[r][c].value_25 = ((uint32_t)analog_value * 75 + 50) / 100;
+                keys[r][c].value_30 = ((uint32_t)analog_value * 66 + 50) / 100;
+                keys[r][c].min_value = ((uint32_t)analog_value * 66 + 50) / 100 - offset;
+                
+            } else if (analog_value >= 1650) {
+                keys[r][c].value_05 = ((uint32_t)analog_value * 97 + 50) / 100;
+                keys[r][c].value_10 = ((uint32_t)analog_value * 94 + 50) / 100;
+                keys[r][c].value_15 = ((uint32_t)analog_value * 89 + 50) / 100;
+                keys[r][c].value_20 = ((uint32_t)analog_value * 83 + 50) / 100;
+                keys[r][c].value_25 = ((uint32_t)analog_value * 74 + 50) / 100;
+                keys[r][c].value_30 = ((uint32_t)analog_value * 68 + 50) / 100;
+                keys[r][c].min_value = ((uint32_t)analog_value * 68 + 50) / 100 - offset;
+                
+            } else if (analog_value >= 1600) {
+                keys[r][c].value_05 = ((uint32_t)analog_value * 98 + 50) / 100;
+                keys[r][c].value_10 = ((uint32_t)analog_value * 94 + 50) / 100;
+                keys[r][c].value_15 = ((uint32_t)analog_value * 90 + 50) / 100;
+                keys[r][c].value_20 = ((uint32_t)analog_value * 83 + 50) / 100;
+                keys[r][c].value_25 = ((uint32_t)analog_value * 75 + 50) / 100;
+                keys[r][c].value_30 = ((uint32_t)analog_value * 70 + 50) / 100;
+                keys[r][c].min_value = ((uint32_t)analog_value * 70 + 50) / 100 - offset;
+                
+            } else if (analog_value >= 1550) {
+                keys[r][c].value_05 = ((uint32_t)analog_value * 98 + 50) / 100;
+                keys[r][c].value_10 = ((uint32_t)analog_value * 94 + 50) / 100;
+                keys[r][c].value_15 = ((uint32_t)analog_value * 89 + 50) / 100;
+                keys[r][c].value_20 = ((uint32_t)analog_value * 82 + 50) / 100;
+                keys[r][c].value_25 = ((uint32_t)analog_value * 75 + 50) / 100;
+                keys[r][c].value_30 = ((uint32_t)analog_value * 71 + 50) / 100;
+                keys[r][c].min_value = ((uint32_t)analog_value * 71 + 50) / 100 - offset;
+                
+            } else if (analog_value >= 1500) {
+                keys[r][c].value_05 = ((uint32_t)analog_value * 98 + 50) / 100;
+                keys[r][c].value_10 = ((uint32_t)analog_value * 94 + 50) / 100;
+                keys[r][c].value_15 = ((uint32_t)analog_value * 89 + 50) / 100;
+                keys[r][c].value_20 = ((uint32_t)analog_value * 82 + 50) / 100;
+                keys[r][c].value_25 = ((uint32_t)analog_value * 75 + 50) / 100;
+                keys[r][c].value_30 = 0;
+                keys[r][c].min_value = ((uint32_t)analog_value * 74 + 50) / 100;
+                
+            } else if (analog_value >= 1400) {
+                keys[r][c].value_05 = ((uint32_t)analog_value * 98 + 50) / 100;
+                keys[r][c].value_10 = ((uint32_t)analog_value * 94 + 50) / 100;
+                keys[r][c].value_15 = ((uint32_t)analog_value * 89 + 50) / 100;
+                keys[r][c].value_20 = ((uint32_t)analog_value * 82 + 50) / 100;
+                keys[r][c].value_25 = 0;
+                keys[r][c].value_30 = 0;
+                keys[r][c].min_value = ((uint32_t)analog_value * 78 + 50) / 100;
+                
+            } else {
+                keys[r][c].value_05 = ((uint32_t)analog_value * 98 + 50) / 100;
+                keys[r][c].value_10 = ((uint32_t)analog_value * 94 + 50) / 100;
+                keys[r][c].value_15 = ((uint32_t)analog_value * 89 + 50) / 100;
+                keys[r][c].value_20 = 0;
+                keys[r][c].value_25 = 0;
+                keys[r][c].value_30 = 0;
+                keys[r][c].min_value = ((uint32_t)analog_value * 85 + 50) / 100;
+                
             }
         }
-        wait_ms(100);
     }
 }
 
@@ -282,6 +342,8 @@ void matrix_init(void) {
 #endif
 
     memset(matrix, 0, sizeof(matrix));
+    adc_dma_init();
+    init_mux_pins();
     initialise_hall_sensors();
 
     // This *must* be called for correct keyboard behavior
@@ -299,12 +361,9 @@ uint8_t matrix_scan(void) {
     #endif
     
     for (uint8_t col_index = 0; col_index < MATRIX_COLS; col_index++) {
-        // Select MUX line for each col
-        ( col_index       & 1) ? gpio_atomic_set_pin_output_high(mux_pins[0]) : gpio_atomic_set_pin_output_low(mux_pins[0]);
-        ((col_index >> 1) & 1) ? gpio_atomic_set_pin_output_high(mux_pins[1]) : gpio_atomic_set_pin_output_low(mux_pins[1]);
-        ((col_index >> 2) & 1) ? gpio_atomic_set_pin_output_high(mux_pins[2]) : gpio_atomic_set_pin_output_low(mux_pins[2]);
-        ((col_index >> 3) & 1) ? gpio_atomic_set_pin_output_high(mux_pins[3]) : gpio_atomic_set_pin_output_low(mux_pins[3]);
-        wait_us(10);
+        set_mux_pins_batch(col_index, mux_pins);
+
+        adcConvert(&ADCD1, &adcgrpcfg, adc_buf, ADC_BUFFER_DEPTH);
         
         for (uint8_t row_index = 0; row_index < ROWS_PER_HAND; row_index++) {
             if (is_keyboard_left()) {
@@ -318,7 +377,7 @@ uint8_t matrix_scan(void) {
             }
 
             analog_key_t *key = &keys[row_index][col_index];
-            uint16_t analog_value = analogReadPin(row_pins[row_index]);
+            uint16_t analog_value = adc_buf[row_index];
 
             key_config_t *config = &user_config.key_config[row_index + thisHand][col_index]; 
             
