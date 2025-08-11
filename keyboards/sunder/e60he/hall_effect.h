@@ -43,4 +43,5 @@ typedef struct {
     #endif
 } analog_key_t;
 
-extern uint16_t lut[];
+extern uint16_t lut_320[];
+extern uint16_t lut_350[];

@@ -24,6 +24,8 @@ static const pin_t mux_pins[MUX_BITS] = ALL_MUX_PINS;
 matrix_row_t matrix[MATRIX_ROWS];
 analog_key_t keys[ROWS_PER_HAND][MATRIX_COLS];
 
+uint16_t *lut;
+
 #if defined(DEBUG_MATRIX_SCAN_RATE)
 static uint32_t matrix_timer = 0;
 #endif
@@ -188,6 +190,16 @@ void bootmagic_scan(void) {
 }
 
 void initialise_hall_sensors(void) {
+    uint8_t offset_multiplier;
+
+    if (user_config.travel_distance == 320) {
+        lut = lut_320;
+        offset_multiplier = 12;
+    } else {
+        lut = lut_350;
+        offset_multiplier = 15;
+    }
+
     for (uint8_t c = 0; c < MATRIX_COLS; c++) {
         set_mux_pins_batch(c, mux_pins);
 
@@ -202,7 +214,7 @@ void initialise_hall_sensors(void) {
             keys[r][c].curr_pos = 0;
             keys[r][c].prev_pos = 0;
             
-            uint16_t offset = (analog_value + 50) / 100 * 15; 
+            uint16_t offset = (analog_value + 50) / 100 * offset_multiplier; 
 
             keys[r][c].max_value = analog_value + offset;
             keys[r][c].min_value = analog_value + 1;
@@ -246,6 +258,7 @@ uint8_t matrix_scan(void) {
         for (uint8_t row_index = 0; row_index < ROWS_PER_HAND; row_index++) {
             analog_key_t *key = &keys[row_index][col_index];
             uint16_t analog_value = adc_buf[row_index];
+            // uint16_t analog_value = adc_channel_avg[row_index];
 
             key_config_t *config = &user_config.key_config[row_index + thisHand][col_index]; 
 
