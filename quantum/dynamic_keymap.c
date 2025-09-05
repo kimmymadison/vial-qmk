@@ -27,6 +27,10 @@
 #include "qmk_settings.h"
 #include "nvm_dynamic_keymap.h"
 
+#ifdef SPLIT_KEYBOARD
+#    include "transactions.h"
+#endif
+
 #ifdef ENCODER_ENABLE
 #    include "encoder.h"
 #else
@@ -119,6 +123,20 @@ int dynamic_keymap_get_hall_effect_key_config(uint8_t row, uint8_t col, key_conf
 }
 
 int dynamic_keymap_set_hall_effect_key_config(uint8_t row, uint8_t col, key_config_t *key) {
+    #ifdef SPLIT_KEYBOARD
+    if (is_keyboard_master()) {
+        uint16_t actuation_point = key->actuation_point;
+        uint8_t mode = key->mode;
+        uint8_t key_config[] = {
+            row,
+            col,
+            (actuation_point >> 8) & 0xFF,
+            actuation_point & 0xFF,
+            mode
+        };
+        transaction_rpc_send(HE_CONFIG_SYNC, sizeof(key_config), key_config);
+    }
+    #endif
     return nvm_dynamic_keymap_set_hall_effect_key_config(row, col, key);
 }
 
@@ -127,6 +145,17 @@ int dynamic_keymap_get_hall_effect_user_config(uint8_t index, uint16_t *config) 
 }
 
 int dynamic_keymap_set_hall_effect_user_config(uint8_t index, uint16_t *config) {
+    #ifdef SPLIT_KEYBOARD
+    if (is_keyboard_master()) {
+        uint16_t value = *config;
+        uint8_t user_config[] = {
+            index,
+            (value >> 8) & 0xFF,
+            value & 0xFF
+        };
+        transaction_rpc_send(HE_CONFIG_SYNC, sizeof(user_config), user_config);
+    }
+    #endif
     return nvm_dynamic_keymap_set_hall_effect_user_config(index, config);
 }
 

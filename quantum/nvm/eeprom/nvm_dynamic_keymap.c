@@ -408,6 +408,8 @@ int nvm_dynamic_keymap_get_hall_effect_key_config(uint8_t row, uint8_t col, key_
 int nvm_dynamic_keymap_set_hall_effect_key_config(uint8_t row, uint8_t col, key_config_t *key) {
     void *address = (void*)(VIAL_HALL_EFFECT_EEPROM_ADDR) + sizeof(uint16_t) + sizeof(uint16_t) + ((row * MATRIX_COLS + col) * sizeof(key_config_t));
     eeprom_write_block(key, address, sizeof(key_config_t));
+
+    user_config.key_config[row][col] = *key;
     
     return 0;
 }
@@ -422,6 +424,12 @@ int nvm_dynamic_keymap_get_hall_effect_user_config(uint8_t index, uint16_t *conf
 int nvm_dynamic_keymap_set_hall_effect_user_config(uint8_t index, uint16_t *config) {
     void *address = (void*)(VIAL_HALL_EFFECT_EEPROM_ADDR + index * sizeof(uint16_t));
     eeprom_write_block(config, address, sizeof(uint16_t));
+
+    if (index == 0) {
+        user_config.travel_distance = *config;
+    } else if (index == 1) {
+        user_config.sensitivity = *config;
+    }
     
     return 0;
 }

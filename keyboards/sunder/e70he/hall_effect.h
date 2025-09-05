@@ -20,6 +20,8 @@
 #   define SENSITIVITY 20
 #endif
 
+void sync_he_settings(void);
+
 typedef struct {
     uint16_t actuation_point;
     uint8_t mode; //0 = no rapid trigger, 1 = rapid trigger, 2 = continuous rapid trigger

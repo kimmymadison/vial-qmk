@@ -347,7 +347,7 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
             uint8_t col = msg[3];
             memcpy(&config, &msg[4], sizeof(config));
             msg[0] = dynamic_keymap_set_hall_effect_key_config(row, col, &config);
-            reload_hall_effect();
+            // reload_hall_effect();
             break;
         }
         case vial_hall_effect_get_user_config: {
@@ -362,7 +362,7 @@ void vial_handle_cmd(uint8_t *msg, uint8_t length) {
             uint8_t idx = msg[2];
             memcpy(&config, &msg[3], sizeof(config));
             msg[0] = dynamic_keymap_set_hall_effect_user_config(idx, &config);
-            reload_hall_effect();
+            // reload_hall_effect();
             break;
         }
         case vial_hall_effect_get_handedness: {
