@@ -117,7 +117,7 @@ void print_key_matrix(const uint8_t keys_arr[][3], size_t len) {
 
         uprintf("(%u, %u, %u) ",
                 keys[k_row][k_col].curr_pos,
-                keys[k_row][k_col].min_value,
+                keys[k_row][k_col].max_value,
                 keys[k_row][k_col].test_value);
     }
     uprintf("\n\n");
@@ -242,6 +242,7 @@ void bootmagic_scan(void) {
 }
 
 void initialise_hall_sensors(void) {
+    wait_ms(100);
     for (uint8_t c = 0; c < MATRIX_COLS; c++) {
         set_mux_pins_batch(c, mux_pins);
 

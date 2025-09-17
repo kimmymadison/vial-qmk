@@ -17,7 +17,7 @@
 #endif
 
 #ifndef SENSITIVITY
-#   define SENSITIVITY 20
+#   define SENSITIVITY 45
 #endif
 
 void sync_he_settings(void);
