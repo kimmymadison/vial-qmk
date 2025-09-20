@@ -235,6 +235,12 @@ void initialise_hall_sensors(void) {
     if (user_config.travel_distance == 320) {
         lut = lut_320;
         offset_multiplier = 12;
+    } else if (user_config.travel_distance == 380) {
+        lut = lut_380;
+        offset_multiplier = 15;
+    } else if (user_config.travel_distance == 390) {
+        lut = lut_390;
+        offset_multiplier = 18;
     } else {
         lut = lut_350;
         offset_multiplier = 15;

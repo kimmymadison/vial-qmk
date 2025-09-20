@@ -47,3 +47,5 @@ typedef struct {
 
 extern uint16_t lut_320[];
 extern uint16_t lut_350[];
+extern uint16_t lut_380[];
+extern uint16_t lut_390[];
