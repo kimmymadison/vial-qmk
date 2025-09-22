@@ -69,14 +69,17 @@ void housekeeping_task_kb(void) {
         static uint32_t connect_time = 0;
         static bool sync_connection = false;
         static bool synced = false;
-        if (is_transport_connected() && !synced) {
+
+        if (is_transport_connected()) {
             sync_connection = true;
-            if (connect_time == 0) {
-                connect_time = timer_read32();
-            }
-            if (timer_elapsed32(connect_time) > 2000) {
-                sync_he_settings();
-                synced = true;
+            if (!synced) {
+                if (connect_time == 0) {
+                    connect_time = timer_read32();
+                }
+                if (timer_elapsed32(connect_time) > 2000) {
+                    sync_he_settings();
+                    synced = true;
+                }
             }
         } else if (sync_connection) {
             connect_time = 0;
