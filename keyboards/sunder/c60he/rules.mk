@@ -1,1 +1,0 @@
-SRC += matrix.c analog.c hall_effect.c
