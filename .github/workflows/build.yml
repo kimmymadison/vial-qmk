@@ -1,0 +1,30 @@
+name: Build QMK firmware
+on:
+  workflow_dispatch:
+    inputs:
+      keyboard:
+        description: "Keyboard"
+        required: true
+        default: "sunder/e60he"
+      keymap:
+        description: "Keymap"
+        required: true
+        default: "kim"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install QMK
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install qmk
+          qmk setup -H .
+      - name: Build firmware
+        run: qmk compile -kb ${{ github.event.inputs.keyboard }} -km ${{ github.event.inputs.keymap }}
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: firmware
+          path: .build/*.uf2
