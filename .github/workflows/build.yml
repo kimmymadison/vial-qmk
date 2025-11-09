@@ -1,13 +1,14 @@
 name: Build QMK firmware
+
 on:
   workflow_dispatch:
     inputs:
       keyboard:
-        description: "Keyboard"
+        description: "Keyboard path (e.g., sunder/e60he)"
         required: true
         default: "sunder/e60he"
       keymap:
-        description: "Keymap"
+        description: "Keymap name (e.g., kim)"
         required: true
         default: "kim"
 
@@ -15,16 +16,28 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
       - name: Install QMK
         run: |
-          python3 -m pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install qmk
           qmk setup -H .
+
       - name: Build firmware
-        run: qmk compile -kb ${{ github.event.inputs.keyboard }} -km ${{ github.event.inputs.keymap }}
-      - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        run: |
+          qmk compile -kb "${{ github.event.inputs.keyboard }}" -km "${{ github.event.inputs.keymap }}"
+
+      - name: Upload UF2 artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: firmware
+          name: ${{ github.event.inputs.keyboard }}_${{ github.event.inputs.keymap }}_firmware
           path: .build/*.uf2
+          if-no-files-found: error
+          retention-days: 14
